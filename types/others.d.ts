@@ -34,7 +34,7 @@ type Agent = {
   lastName: string;
   phoneNumber: string;
   status: string;
-  systemCompany: string;
+  systemCompany: any;
 };
 
 export type IVRNode = {
