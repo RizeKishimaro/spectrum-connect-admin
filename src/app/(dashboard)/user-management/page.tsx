@@ -27,7 +27,7 @@ export default function UserManagement() {
       setLoading(true)
       const fetchedUsers = await getUsers()
       setUsers(fetchedUsers)
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error",
         description: "Failed to load users",
