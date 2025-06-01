@@ -11,6 +11,7 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token'); // or your token key
+    console.log(token)
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -28,10 +29,10 @@ axiosClient.interceptors.response.use(
     const status = error.response?.status;
 
     // Handle invalid/expired token
-    if (status === 401 || status === 403) {
-      localStorage.removeItem('token');
-      window.location.href = '/login'; // Or use your router's push
-    }
+    // if (status === 401 || status === 403) {
+    //   localStorage.removeItem('token');
+    //   window.location.href = '/login'; // Or use your router's push
+    // }
 
     return Promise.reject(error);
   }

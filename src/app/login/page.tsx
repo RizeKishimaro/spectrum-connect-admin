@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AnimatedBackground } from "@/components/login/animated-background"
+import axios from "axios"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -26,21 +27,18 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const result = await signIn("credentials", {
-        redirect: false,
-        email,
-        password,
-      })
-
-      if (result?.error) {
-        setError("Invalid email or password")
+      const request = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/login`, { email, password })
+      if (request.status !== 201) {
+        setError(request.data.message)
         setIsLoading(false)
-        return
+        return;
       }
-
-      router.push("/dashboard")
+      console.log(request)
+      localStorage.setItem("token", request.data.access_token)
+      localStorage.setItem("user", JSON.stringify(request.data.user))
+      router.push("/call-logs")
     } catch (error) {
-      setError("An error occurred. Please try again.")
+      setError("Invalid credentials")
       setIsLoading(false)
     }
   }
@@ -77,9 +75,9 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <Button variant="link" className="px-0 font-normal h-auto" type="button">
-                    Forgot password?
-                  </Button>
+                  {/* <Button variant="link" className="px-0 font-normal h-auto" type="button"> */}
+                  {/*   Forgot password? */}
+                  {/* </Button> */}
                 </div>
                 <Input
                   id="password"
