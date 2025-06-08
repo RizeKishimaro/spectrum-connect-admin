@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -15,13 +16,11 @@ import {
   LogOut,
   PhoneCall,
   History,
-  User,
   PersonStanding,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
-
+import { useAuth } from "@/components/providers/auth-provider"
 
 const routes = [
   {
@@ -93,34 +92,23 @@ const routes = [
     icon: Settings,
     href: "/settings",
   },
-];
-
+]
 
 export function Sidebar() {
-  const pathname = usePathname();
-  const router = useRouter()
-
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user")
-    router.push("/login")
-  }
-
-  const user =
-    typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("user") || "{}")
-      : {};
+  const pathname = usePathname()
+  const { user, logout, hasRole } = useAuth()
 
   const filteredRoutes = routes.filter((route) => {
-    if (route.requireAdmin && user?.roles !== "admin") return false;
-    return true;
-  });
+    if (route.requireAdmin && !hasRole("admin")) return false
+    return true
+  })
 
   return (
     <div className="flex flex-col h-full w-64 border-r bg-card">
       <div className="p-6">
         <h1 className="text-xl font-bold">Spectrum Connect</h1>
         <p className="text-sm text-muted-foreground">Admin Dashboard</p>
+        {user && <div className="mt-2 text-xs text-muted-foreground">Welcome, {user.email}</div>}
       </div>
       <div className="flex-1 px-3 py-2 space-y-1">
         {filteredRoutes.map((route) => (
@@ -129,9 +117,7 @@ export function Sidebar() {
             href={route.href}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent",
-              pathname === route.href
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground"
+              pathname === route.href ? "bg-accent text-accent-foreground" : "text-muted-foreground",
             )}
           >
             <route.icon className="h-4 w-4" />
@@ -140,17 +126,12 @@ export function Sidebar() {
         ))}
       </div>
       <div className="p-4 border-t">
-        <Button
-          variant="outline"
-          className="w-full justify-start"
-          size="sm"
-          onClick={() => logout()}
-        >
+        <Button variant="outline" className="w-full justify-start" size="sm" onClick={logout}>
           <LogOut className="mr-2 h-4 w-4" />
           Logout
         </Button>
       </div>
     </div>
-  );
+  )
 }
 

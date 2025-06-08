@@ -1,4 +1,3 @@
-
 "use client"
 
 import type React from "react"
@@ -11,14 +10,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { PlusCircle, Trash2, Plus } from "lucide-react"
+import { Trash2, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import axiosClient from "@/lib/axiosClient"
 
@@ -43,9 +41,15 @@ type SectionConfig = {
   [key: string]: string | number
 }
 
-export function CreateAgentForm() {
+interface EditAgentFormProps {
+  agent: any
+  isOpen: boolean
+  onClose: () => void
+  onAgentUpdated: () => void
+}
+
+export function EditAgentForm({ agent, isOpen, onClose, onAgentUpdated }: EditAgentFormProps) {
   const { toast } = useToast()
-  const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [companies, setCompanies] = useState<Company[]>([])
 
@@ -63,28 +67,13 @@ export function CreateAgentForm() {
   })
 
   // Dynamic configuration sections
-  const [endpointFields, setEndpointFields] = useState<CustomField[]>([
-    { id: "1", key: "type", value: "endpoint" },
-    { id: "2", key: "transport", value: "transport-ws" },
-    { id: "3", key: "context", value: "outbound" },
-    { id: "4", key: "disallow", value: "all" },
-    { id: "5", key: "allow", value: "ulaw,alaw" },
-    { id: "6", key: "webrtc", value: "yes" },
-  ])
-
-  const [authFields, setAuthFields] = useState<CustomField[]>([
-    { id: "1", key: "type", value: "auth" },
-    { id: "2", key: "auth_type", value: "userpass" },
-  ])
-
-  const [aorFields, setAorFields] = useState<CustomField[]>([
-    { id: "1", key: "type", value: "aor" },
-    { id: "2", key: "max_contacts", value: "1" },
-  ])
-
+  const [endpointFields, setEndpointFields] = useState<CustomField[]>([])
+  const [authFields, setAuthFields] = useState<CustomField[]>([])
+  const [aorFields, setAorFields] = useState<CustomField[]>([])
   const [contactFields, setContactFields] = useState<CustomField[]>([])
   const [identifyFields, setIdentifyFields] = useState<CustomField[]>([])
 
+  // Fetch companies on component mount
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -97,6 +86,108 @@ export function CreateAgentForm() {
 
     fetchCompanies()
   }, [])
+
+  // Populate form data when agent changes
+  useEffect(() => {
+    if (agent && isOpen) {
+      // Populate basic form data
+      setFormData({
+        name: agent.name || "",
+        sipUname: agent.sipUname || "",
+        sipPassword: agent.sipPassword || "",
+        password: agent.password || "",
+        firstName: agent.firstName || "",
+        lastName: agent.lastName || "",
+        phoneNumber: agent.phoneNumber || "",
+        status: agent.status || "AVAILABLE",
+        systemCompanyId: agent.systemCompany?.id?.toString() || "",
+        SIPTech: agent.SIPTech || "PJSIP",
+      })
+
+      // Populate configuration fields from existing data
+      populateConfigFields()
+    }
+  }, [agent, isOpen])
+
+  const populateConfigFields = async () => {
+    try {
+      // Fetch detailed agent configuration from backend
+      const response = await axiosClient.get(`/agents/${agent.id}`)
+      const agentData = response.data
+
+      // Convert config objects to field arrays
+      if (agentData.endpoint?.config) {
+        setEndpointFields(configToFields(agentData.endpoint.config, "endpoint"))
+      } else {
+        setEndpointFields([
+          { id: "1", key: "type", value: "endpoint" },
+          { id: "2", key: "transport", value: "transport-ws" },
+          { id: "3", key: "context", value: "outbound" },
+          { id: "4", key: "disallow", value: "all" },
+          { id: "5", key: "allow", value: "ulaw,alaw" },
+          { id: "6", key: "webrtc", value: "yes" },
+        ])
+      }
+
+      if (agentData.auth?.config) {
+        setAuthFields(configToFields(agentData.auth.config, "auth"))
+      } else {
+        setAuthFields([
+          { id: "1", key: "type", value: "auth" },
+          { id: "2", key: "auth_type", value: "userpass" },
+        ])
+      }
+
+      if (agentData.aor?.config) {
+        setAorFields(configToFields(agentData.aor.config, "aor"))
+      } else {
+        setAorFields([
+          { id: "1", key: "type", value: "aor" },
+          { id: "2", key: "max_contacts", value: "1" },
+        ])
+      }
+
+      if (agentData.contact?.config) {
+        setContactFields(configToFields(agentData.contact.config, "contact"))
+      } else {
+        setContactFields([])
+      }
+
+      if (agentData.identify?.config) {
+        setIdentifyFields(configToFields(agentData.identify.config, "identify"))
+      } else {
+        setIdentifyFields([])
+      }
+    } catch (error) {
+      console.error("Failed to fetch agent configuration:", error)
+      // Set default values if fetch fails
+      setEndpointFields([
+        { id: "1", key: "type", value: "endpoint" },
+        { id: "2", key: "transport", value: "transport-ws" },
+        { id: "3", key: "context", value: "outbound" },
+        { id: "4", key: "disallow", value: "all" },
+        { id: "5", key: "allow", value: "ulaw,alaw" },
+        { id: "6", key: "webrtc", value: "yes" },
+      ])
+      setAuthFields([
+        { id: "1", key: "type", value: "auth" },
+        { id: "2", key: "auth_type", value: "userpass" },
+      ])
+      setAorFields([
+        { id: "1", key: "type", value: "aor" },
+        { id: "2", key: "max_contacts", value: "1" },
+      ])
+    }
+  }
+
+  // Convert config object to fields array
+  const configToFields = (config: any, section: string): CustomField[] => {
+    return Object.entries(config).map(([key, value], index) => ({
+      id: `${section}-${index}`,
+      key,
+      value: String(value),
+    }))
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target
@@ -284,53 +375,20 @@ export function CreateAgentForm() {
         }
       }
 
-      await axiosClient.post("/agents", payload)
+      // Use PATCH request for updating
+      await axiosClient.patch(`/agents/${agent.id}`, payload)
 
-      console.log(payload)
       toast({
-        title: "Agent created",
-        description: `${formData.firstName} ${formData.lastName} has been added successfully.`,
+        title: "Agent updated",
+        description: `${formData.firstName} ${formData.lastName} has been updated successfully.`,
       })
 
-      // Reset form
-      setFormData({
-        name: "",
-        sipUname: "",
-        sipPassword: "",
-        password: "",
-        firstName: "",
-        lastName: "",
-        phoneNumber: "",
-        status: "AVAILABLE",
-        systemCompanyId: "",
-        SIPTech: "PJSIP",
-      })
-
-      // Reset configuration fields to defaults
-      setEndpointFields([
-        { id: "1", key: "type", value: "endpoint" },
-        { id: "2", key: "transport", value: "transport-ws" },
-        { id: "3", key: "context", value: "outbound" },
-        { id: "4", key: "disallow", value: "all" },
-        { id: "5", key: "allow", value: "ulaw,alaw" },
-        { id: "6", key: "webrtc", value: "yes" },
-      ])
-      setAuthFields([
-        { id: "1", key: "type", value: "auth" },
-        { id: "2", key: "auth_type", value: "userpass" },
-      ])
-      setAorFields([
-        { id: "1", key: "type", value: "aor" },
-        { id: "2", key: "max_contacts", value: "1" },
-      ])
-      setContactFields([])
-      setIdentifyFields([])
-
-      setOpen(false)
+      onAgentUpdated()
+      onClose()
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create agent. Please try again.",
+        description: "Failed to update agent. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -392,17 +450,11 @@ export function CreateAgentForm() {
   )
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Agent
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Agent</DialogTitle>
-          <DialogDescription>Add a new agent with custom PJSIP/SIP configuration.</DialogDescription>
+          <DialogTitle>Edit Agent</DialogTitle>
+          <DialogDescription>Update agent information and PJSIP/SIP configuration.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <Tabs defaultValue="basic" className="w-full">
@@ -439,13 +491,19 @@ export function CreateAgentForm() {
                     type="password"
                     value={formData.sipPassword}
                     onChange={handleChange}
-                    required
+                    placeholder="Leave empty to keep current password"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Backend Password</Label>
-                <Input id="password" type="password" value={formData.password} onChange={handleChange} required />
+                <Input
+                  id="password"
+                  type="password"
+                  value={""}
+                  onChange={handleChange}
+                  placeholder="Leave empty to keep current password"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phoneNumber">Phone Number</Label>
@@ -514,8 +572,11 @@ export function CreateAgentForm() {
           </Tabs>
 
           <DialogFooter className="mt-6">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Agent"}
+              {isLoading ? "Updating..." : "Update Agent"}
             </Button>
           </DialogFooter>
         </form>

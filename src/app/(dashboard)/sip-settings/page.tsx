@@ -1,9 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { SipProviderTable } from "@/components/sip-settings/sip-provider-table"
+import { SipSettingsTable } from "@/components/sip-settings/sip-provider-table"
 import { RtpAddressTable } from "@/components/sip-settings/rtp-address-table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CreateSipProviderForm } from "@/components/sip-settings/create-sip-provider-form"
 import { CreateRtpAddressForm } from "@/components/sip-settings/create-rtp-address-form"
+import { ComprehensiveSipForm } from "@/components/sip-settings/comprehensive-sip-form"
 
 export default function SipSettingsPage() {
   return (
@@ -18,7 +19,9 @@ export default function SipSettingsPage() {
         </TabsList>
         <TabsContent value="providers" className="space-y-4">
           <div className="flex justify-end">
-            <CreateSipProviderForm />
+
+            <ComprehensiveSipForm mode="create" />
+
           </div>
           <Card>
             <CardHeader>
@@ -26,7 +29,7 @@ export default function SipSettingsPage() {
               <CardDescription>Manage your SIP providers and their configurations.</CardDescription>
             </CardHeader>
             <CardContent>
-              <SipProviderTable />
+              <SipSettingsTable />
             </CardContent>
           </Card>
         </TabsContent>

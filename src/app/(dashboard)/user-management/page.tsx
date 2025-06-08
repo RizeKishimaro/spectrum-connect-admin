@@ -1,42 +1,44 @@
+
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { MoreHorizontal, Pencil, Trash2, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { DataTable } from "@/components/ui/data-table"
 import { AddUserDialog } from "@/components/user-management/add-user-dialog"
 import { EditUserDialog } from "@/components/user-management/edit-user-dialog"
 import { DeleteUserDialog } from "@/components/user-management/delete-user-dialog"
-import { getUsers, type User } from "../../../lib/action"
+import { usePagination } from "@/lib/usePagination"
 import { useToast } from "@/hooks/use-toast"
+import type { User } from "@/lib/action"
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const { toast } = useToast()
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true)
-      const fetchedUsers = await getUsers()
-      setUsers(fetchedUsers)
-    } catch (_error) {
-      toast({
-        title: "Error",
-        description: "Failed to load users",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
+  const {
+    data: users,
+    loading,
+    error,
+    page,
+    totalPages,
+    total,
+    setPage,
+    refresh,
+    setSearch,
+    setLimit,
+  } = usePagination<User>({
+    route: "/user",
+    cacheKey: "users",
+    include: ["systemCompany"],
+  })
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "AVAILABLE":
@@ -51,22 +53,6 @@ export default function UserManagement() {
         return "bg-gray-500"
     }
   }
-
-
-  useEffect(() => {
-    loadUsers()
-  }, [])
-
-  const handleEdit = (user: User) => {
-    setSelectedUser(user)
-    setShowEditDialog(true)
-  }
-
-  const handleDelete = (user: User) => {
-    setSelectedUser(user)
-    setShowDeleteDialog(true)
-  }
-  console.log(users)
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -85,15 +71,72 @@ export default function UserManagement() {
     )
   }
 
-  if (loading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading users...</div>
-        </div>
-      </div>
-    )
+  const handleEdit = (user: User) => {
+    setSelectedUser(user)
+    setShowEditDialog(true)
   }
+
+  const handleDelete = (user: User) => {
+    setSelectedUser(user)
+    setShowDeleteDialog(true)
+  }
+
+  const handleSuccess = () => {
+    refresh()
+    toast({
+      title: "Success",
+      description: "Operation completed successfully",
+    })
+  }
+
+  const columns = [
+    {
+      key: "email",
+      header: "Name",
+      cell: (user: User) => <span className="font-medium">{user.email}</span>,
+    },
+    {
+      key: "sipUser",
+      header: "SIP Username",
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (user: User) => <Badge className={getStatusColor(user.status)}>{user.status}</Badge>,
+    },
+    {
+      key: "roles",
+      header: "Role",
+    },
+    {
+      key: "systemCompany",
+      header: "Company",
+      cell: (user: User) => user.systemCompany?.name || "N/A",
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      cell: (user: User) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleEdit(user)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDelete(user)} className="text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ]
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -113,62 +156,24 @@ export default function UserManagement() {
           <CardDescription>Manage your call center agents, their status, and assignments.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>SIP Username</TableHead>
-                <TableHead>Phone Number</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    No agents found. Add your first agent to get started.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.email}</TableCell>
-                    <TableCell>{user.sipUser}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(user.status)}>{user.status}</Badge>
-                    </TableCell>
-                    <TableCell>{user.roles}</TableCell>
-                    <TableCell>{user.systemCompany.name}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(user)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(user)} className="text-destructive">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <DataTable
+            data={users}
+            columns={columns}
+            loading={loading}
+            error={error}
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            onPageChange={setPage}
+            onSearch={setSearch}
+            onRefresh={refresh}
+            onLimitChange={setLimit}
+            searchPlaceholder="Search agents..."
+          />
         </CardContent>
       </Card>
 
-      <AddUserDialog open={showAddDialog} onOpenChange={setShowAddDialog} onSuccess={loadUsers} />
+      <AddUserDialog open={showAddDialog} onOpenChange={setShowAddDialog} onSuccess={handleSuccess} />
 
       {selectedUser && (
         <>
@@ -176,13 +181,13 @@ export default function UserManagement() {
             open={showEditDialog}
             onOpenChange={setShowEditDialog}
             user={selectedUser}
-            onSuccess={loadUsers}
+            onSuccess={handleSuccess}
           />
           <DeleteUserDialog
             open={showDeleteDialog}
             onOpenChange={setShowDeleteDialog}
             user={selectedUser}
-            onSuccess={loadUsers}
+            onSuccess={handleSuccess}
           />
         </>
       )}

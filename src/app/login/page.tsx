@@ -1,10 +1,8 @@
+
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
-import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,14 +10,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AnimatedBackground } from "@/components/login/animated-background"
+import { useAuth } from "@/components/providers/auth-provider"
 import axios from "axios"
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,18 +26,21 @@ export default function LoginPage() {
     setError("")
 
     try {
-      const request = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/login`, { email, password })
-      if (request.status !== 201) {
-        setError(request.data.message)
-        setIsLoading(false)
-        return;
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user/login`, {
+        email,
+        password,
+      })
+
+      if (response.status === 201) {
+        const { access_token, user } = response.data
+        login(access_token, user)
+      } else {
+        setError(response.data.message || "Login failed")
       }
-      console.log(request)
-      localStorage.setItem("token", request.data.access_token)
-      localStorage.setItem("user", JSON.stringify(request.data.user))
-      router.push("/call-logs")
-    } catch (error) {
-      setError("Invalid credentials")
+    } catch (error: any) {
+      console.error("Login error:", error)
+      setError(error.response?.data?.message || "Invalid credentials")
+    } finally {
       setIsLoading(false)
     }
   }
@@ -70,21 +72,18 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  {/* <Button variant="link" className="px-0 font-normal h-auto" type="button"> */}
-                  {/*   Forgot password? */}
-                  {/* </Button> */}
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
@@ -102,3 +101,4 @@ export default function LoginPage() {
     </div>
   )
 }
+
